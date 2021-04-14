@@ -18,7 +18,7 @@ else: #open raw data and process it
     lines = fi.readlines()
     for l in lines:
         liner = l.replace('-1 -2','') #remove ending
-        liner = liner.replace(' -1',',') #replace -1 with comma
+        liner = liner.replace(' -1','') #replace -1 with comma
         fout.write(liner)
         transactions.append(tuple(liner.split()))
     fi.close()
@@ -27,80 +27,76 @@ else: #open raw data and process it
 
 ############################# 2 run Apriori ##########################
 # itemsets,rules = apriori(transactions,min_support=0.005,min_confidence=0.7)
-if path.exists('itemsets.txt'):
-    fi = open('itemsets.txt','rt')
-    itemsets = fi.readlines()
-    fi.close()
-else:
-    itemsets,rules = apriori(transactions,min_support=0.005,min_confidence=0.7)
-    fi = open('itemsets.txt','wt')
-    fi.write(str(itemsets))
-    fi.close()
+itemsets,rules = apriori(transactions,min_support=0.005,min_confidence=0.7)
 ######################################################################
 
-print(itemsets)
-print("\n\nEEEEEEEEEEEEEEEEEENNNNNNNNNNNNNNNNNNNDDDDDDDDDDDDDDDDDDD\n\n")
-
-############################# 3 Get Equi Support and Support Set ##########################
+############################# 3 Get Support Key Set ###############
 
 def getSuppK(itemlist):
     skeys = []
     for k,v in itemlist.items():
         for a,s in v.items():
             skeys.append(s)
-    return skeys
-
-# def getEquiSuppGrp(itemlist):
-#     adt = {}
-#     skeys = getSuppK(itemlist)
-#     for k,v in itemlist.items():
-#         for a,s in v.items():
-#             li = []
-#             for key in skeys:
-#                 if s == key:
-#                     li.append((a,s))     NOT CORRECT CREATING DUPL
-#                 adt[s] = li
-#     return adt,set(skeys)
-# equiGrp,uniqueKeys = getEquiSuppGrp(itemsets)
+    check = Counter(skeys)
+    return set(skeys),check
+############################### 3b Get Equi Support ###########################
+def getEquiSupp(itemlist):
+    equiDict = {}
+    skeys,_ = getSuppK(itemlist) # returns a set of unique support values as keys
+    for key,val in itemlist.items():
+        for item,supp in val.items():
+            if supp in skeys:
+                equiDict.setdefault(supp,[]).append((item,supp))
+    return equiDict,skeys
 ######################################################################
 
-print(equiGrp)
-print("\n___________________________________________")
-print("\n___________________________________________")
-print("\n___________________________________________")
-print(uniqueKeys)
-
-############################### 4 Get closed Set #######################################
+############################### 4 Get closed Set ###########################
 #closed set as a function
-def closedSet(equilistgrp,supportkeys):
-    subsettest = []
-    closedtest = []
-    for key in supportkeys:
-        equiSupport = []
-        for i in range(len(equilistgrp)):
-            if(equilistgrp[i][0][1] == key):
-                # print("for key -->", key,"the equisupport group is: ",testgrp[i][0])
-                # print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n")
-                lrgfreqset = equilistgrp[i][0][0]
-                closedtest.append(equilistgrp[i][0])
-                # print("arge freq set: ",lrgfreqset)
-                for j in range(len(equilistgrp[i])):
-                    if equilistgrp[i][j][0] != lrgfreqset:
-                        # print("testgrp[{}][{}][0]: {}".format(i,j,equilistgrp[i][j][0]))
-                        # print("this is the item set to cmp ",equilistgrp[i][j][0])
-                        if(frozenset(equilistgrp[i][j][0]).issubset(lrgfreqset)):
-                            subsettest.append(equilistgrp[i][j])
-                        else:
-                            closedtest.append(equilistgrp[i][j])
-    return subsettest, closedtest
-        #         sameSup.append(item) #now have all same support items together
+def getClosedSet(equilistgrp):
+    """ get closed set """
+    candidates = []
+    closed = []
+    for i in equilistgrp:
+        size = len(equilistgrp[i])
+        for a,b in zip(equilistgrp[i],equilistgrp[i]):
+            if a[0] == b[0]:
+                closed.append(a)
+            if frozenset(a[0]).issubset(b[0]):
+                candidates.append(a)
+            if frozenset(a[0]).issuperset(b[0]):
+                # print(b," is Not closed")
+                candidates.append(b)
+            else:
+                # print(a, "is closed")
+                closed.append(a)
+    return candidates, closed
 
 ######################################################################
-openfreqset, closedItemset = closedSet(equiGrp,uniqueKeys)
+
+############################### 5 Get Maximal Set ###########################
+#closed set as a function
+def getClosedSet(equilistgrp):
+    """ get closed set """
+    candidates = []
+    closed = []
+    for i in equilistgrp:
+        size = len(equilistgrp[i])
+        for a,b in zip(equilistgrp[i],equilistgrp[i]):
+            if a[0] == b[0]:
+                closed.append(a)
+            if frozenset(a[0]).issubset(b[0]):
+                candidates.append(a)
+            if frozenset(a[0]).issuperset(b[0]):
+                # print(b," is Not closed")
+                candidates.append(b)
+            else:
+                # print(a, "is closed")
+                closed.append(a)
+    return candidates, closed
+
 ######################################################################
 
-
-############################### 5 Output #######################################
+############################### 6 Output #######################################
 #store result as dict
 def formatOutputDict(ret_list):
     res_dict = {1:{},2:{},3:{},4:{},5:{},6:{},7:{}}
